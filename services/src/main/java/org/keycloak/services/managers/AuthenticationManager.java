@@ -1241,7 +1241,7 @@ public class AuthenticationManager {
             }
 
             // we need to add dynamic scopes with params to the scopes to consent every time for now
-            if (grantedConsent == null || !grantedConsent.isClientScopeGranted(clientScope) || isDynamicScopeWithParam(authDetails)) {
+            if (grantedConsent == null || !grantedConsent.isClientScopeGranted(clientScope)) {
                 clientScopesToDisplay.add(authDetails);
             }
         }
@@ -1265,12 +1265,21 @@ public class AuthenticationManager {
     }
 
 
-    private static Stream<AuthorizationDetails> getClientScopeModelStream(KeycloakSession session) {
+    public static Stream<AuthorizationDetails> getClientScopeModelStream(KeycloakSession session) {
         AuthenticationSessionModel authSession = session.getContext().getAuthenticationSession();
         //if Dynamic Scopes are enabled, get the scopes from the AuthorizationRequestContext, passing the session and scopes as parameters
         // then concat a Stream with the ClientModel, as it's discarded in the getAuthorizationRequestContext method
         if (Profile.isFeatureEnabled(Profile.Feature.DYNAMIC_SCOPES)) {
-            return AuthorizationContextUtil.getAuthorizationRequestsStreamFromScopesWithClient(session, authSession.getClientNote(OAuth2Constants.SCOPE));
+            return AuthorizationContextUtil.getAuthorizationRequestsStreamFromScopesWithClient(session, authSession.getClientNote(OAuth2Constants.SCOPE))
+                    .map(authDetails -> {
+                        if (authDetails.isDynamicScope()) {
+                            String fullName = authDetails.getAuthorizationDetails().getScopeNameFromCustomData();
+                            ClientScopeModel decorated = new org.keycloak.models.DynamicClientScopeDecorator(authDetails.getClientScope(), fullName);
+                            return new AuthorizationDetails(decorated, authDetails.getSource(), authDetails.getAuthorizationDetails());
+                        } else {
+                            return authDetails;
+                        }
+                    });
         }
         // if dynamic scopes are not enabled, we retain the old behaviour, but the ClientScopes will be wrapped in
         // AuthorizationRequest objects to standardize the code handling these.

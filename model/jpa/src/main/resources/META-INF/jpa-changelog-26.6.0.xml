@@ -49,6 +49,17 @@
             <column name="IDENTITY_PROVIDER" type="VARCHAR(255)" />
             <column name="BROKER_USER_ID" type="VARCHAR(255)" />
         </createIndex>
+    <changeSet author="keycloak" id="26.6.0-add-scope-param">
+        <preConditions onSqlOutput="TEST" onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="USER_CONSENT_CLIENT_SCOPE" columnName="SCOPE_PARAM" />
+            </not>
+        </preConditions>
+        <addColumn tableName="USER_CONSENT_CLIENT_SCOPE">
+            <column name="SCOPE_PARAM" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <dropPrimaryKey tableName="USER_CONSENT_CLIENT_SCOPE" constraintName="CONSTRAINT_GRNTCSNT_CLSC_PM"/>
+        <addPrimaryKey columnNames="USER_CONSENT_ID, SCOPE_ID, SCOPE_PARAM" constraintName="CONSTRAINT_GRNTCSNT_CLSC_PM" tableName="USER_CONSENT_CLIENT_SCOPE"/>
     </changeSet>
-
-</databaseChangeLog>

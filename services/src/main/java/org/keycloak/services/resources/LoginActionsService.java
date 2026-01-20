@@ -97,6 +97,7 @@ import org.keycloak.protocol.oidc.grants.device.DeviceGrantType;
 import org.keycloak.protocol.oidc.utils.OIDCResponseMode;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
+import org.keycloak.rar.AuthorizationDetails;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.ErrorPageException;
@@ -1056,15 +1057,15 @@ public class LoginActionsService {
         // Update may not be required if all clientScopes were already granted (May happen for example with prompt=consent)
         boolean updateConsentRequired = false;
 
-        for (String clientScopeId : authSession.getClientScopes()) {
-            ClientScopeModel clientScope = KeycloakModelUtils.findClientScopeById(realm, client, clientScopeId);
+        for (AuthorizationDetails authDetails : AuthenticationManager.getClientScopeModelStream(session).toList()) {
+            ClientScopeModel clientScope = authDetails.getClientScope();
             if (clientScope != null) {
                 if (!grantedConsent.isClientScopeGranted(clientScope) && clientScope.isDisplayOnConsentScreen()) {
                     grantedConsent.addGrantedClientScope(clientScope);
                     updateConsentRequired = true;
                 }
             } else {
-                logger.warnf("Client scope or client with ID '%s' not found", clientScopeId);
+                logger.warnf("Client scope not found");
             }
         }
 

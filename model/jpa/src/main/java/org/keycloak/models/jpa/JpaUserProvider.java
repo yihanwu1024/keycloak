@@ -320,6 +320,9 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
             for (UserConsentClientScopeEntity grantedClientScope : grantedClientScopeEntities) {
                 ClientScopeModel grantedClientScopeModel = KeycloakModelUtils.findClientScopeById(realm, client, grantedClientScope.getScopeId());
                 if (grantedClientScopeModel != null) {
+                    if (grantedClientScope.getScopeParam() != null) {
+                        grantedClientScopeModel = new org.keycloak.models.DynamicClientScopeDecorator(grantedClientScopeModel, grantedClientScope.getScopeId() + ":" + grantedClientScope.getScopeParam());
+                    }
                     model.addGrantedClientScope(grantedClientScopeModel);
                 }
             }
@@ -336,7 +339,20 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
         for (ClientScopeModel clientScope : consentModel.getGrantedClientScopes()) {
             UserConsentClientScopeEntity grantedClientScopeEntity = new UserConsentClientScopeEntity();
             grantedClientScopeEntity.setUserConsent(consentEntity);
-            grantedClientScopeEntity.setScopeId(clientScope.getId());
+            if (clientScope instanceof org.keycloak.models.DynamicClientScopeDecorator) {
+                String fullId = clientScope.getId();
+                int colonIndex = fullId.lastIndexOf(':');
+                if (colonIndex > 0) {
+                    String baseId = fullId.substring(0, colonIndex);
+                    String param = fullId.substring(colonIndex + 1);
+                    grantedClientScopeEntity.setScopeId(baseId);
+                    grantedClientScopeEntity.setScopeParam(param);
+                } else {
+                    grantedClientScopeEntity.setScopeId(fullId);
+                }
+            } else {
+                grantedClientScopeEntity.setScopeId(clientScope.getId());
+            }
 
             // Check if it's already there
             if (!grantedClientScopeEntities.contains(grantedClientScopeEntity)) {
